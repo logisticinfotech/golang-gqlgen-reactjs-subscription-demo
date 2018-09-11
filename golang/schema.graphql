@@ -1,0 +1,21 @@
+
+type Channel {
+  id: Int!                # "!" denotes a required field
+  name: String!
+}
+
+type Query {
+    channels: [Channel!]!
+}
+
+type Mutation {
+    addChannel(name: String!): Channel!
+    updateChannel(id:Int!,name: String!): Channel!
+    deleteChannel(ID: Int!): Channel!
+}
+
+type Subscription {
+    subscriptionChannelAdded: Channel!
+    subscriptionChannelDeleted: Channel!
+    subscriptionChannelUpdated: Channel!
+}
