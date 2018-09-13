@@ -103,7 +103,57 @@ Step 4:
 
     For now we will consontrate only on Add Channel Mutation and Subscription
 
+    For subscription we need to create one observer for our channel list
+        var addChannelObserver map[string]chan model.Channel
 
+    Now on file init we set blank model.Channel Object in addChannelObserver
+        func init() {
+            addChannelObserver = map[string]chan model.Channel{}
+        }
+       
+    When any new channel added we need to add newly added channel into our addChannelObserver 
 
+    func (r *mutationResolver) AddChannel(ctx context.Context, name string) (model.Channel, error) {
+        db := connection.DbConn()
 
+        insForm, err := db.Prepare("INSERT INTO channel(name) VALUES(?)")
+        if err != nil {
+            panic(err.Error())
+        }
 
+        var newChannel model.Channel
+        res, err := insForm.Exec(name)
+        if err != nil {
+            println("Exec err:", err.Error())
+        } else {
+            var id int64
+            id, err := res.LastInsertId()
+            if err != nil {
+                println("Error:", err.Error())
+            } else {
+                newChannel = model.Channel{ID: int(id), Name: name}
+            }
+        }
+        defer db.Close()
+        // Add new chanel in addChannelObserver
+        for _, observer := range addChannelObserver {
+            observer <- newChannel
+        }
+        return newChannel, nil
+    }
+
+    Now we create function for fire subscription of add channel
+
+    func (r *subscriptionResolver) SubscriptionChannelAdded(ctx context.Context) (<-chan model.Channel, error) {
+        id := randString(8)
+        events := make(chan model.Channel, 1)
+
+        go func() {
+            <-ctx.Done()
+            delete(addChannelObserver, id)
+        }()
+
+        addChannelObserver[id] = events
+
+        return events, nil
+    }
