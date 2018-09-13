@@ -2,16 +2,11 @@ package resolver
 
 import (
 	context "context"
-	"fmt"
+	"golang-gqlgen-reactjs-subscription-demo/golang/app/config/connection"
 	"golang-gqlgen-reactjs-subscription-demo/golang/app/model"
 )
 
-// type channelResolver struct{ *resolver }
-var channelList = []model.Channel{
-	{ID: 1, Name: "Channel A"},
-	{ID: 2, Name: "Channel B"},
-}
-var lastId = 2
+type channelResolver struct{ *Resolver }
 
 var addChannelObserver map[string]chan model.Channel
 var deleteChannelObserver map[string]chan model.Channel
@@ -22,66 +17,84 @@ func init() {
 	deleteChannelObserver = map[string]chan model.Channel{}
 	updateChannelObserver = map[string]chan model.Channel{}
 }
-
-/*
-	- Function for run query
-	-example :
-	 	query{
-			channels{
-				name
-				id
-			}
-		}
-*/
 func (r *queryResolver) Channels(ctx context.Context) ([]model.Channel, error) {
-	return channelList, nil
+	db := connection.DbConn()
+	var query = "SELECT * FROM channel"
+	selDB, err := db.Query(query)
+	var arrChannel []model.Channel
+	for selDB.Next() {
+		var name string
+		var id int64
+		err = selDB.Scan(&id, &name)
+		if err != nil {
+			panic(err.Error())
+		}
+		todo1 := model.Channel{ID: int(id), Name: name}
+		arrChannel = append(arrChannel, todo1)
+	}
+
+	defer db.Close()
+	return arrChannel, nil
 }
 
 func (r *mutationResolver) AddChannel(ctx context.Context, name string) (model.Channel, error) {
-	fmt.Println("---------AddChannel-----------")
+	db := connection.DbConn()
 
-	lastId++
-	newID := lastId
-	newChannel := model.Channel{
-		ID:   newID,
-		Name: name,
+	insForm, err := db.Prepare("INSERT INTO channel(name) VALUES(?)")
+	if err != nil {
+		panic(err.Error())
 	}
-	channelList = append(channelList, newChannel)
+
+	var newChannel model.Channel
+	res, err := insForm.Exec(name)
+	if err != nil {
+		println("Exec err:", err.Error())
+	} else {
+		var id int64
+		id, err := res.LastInsertId()
+		if err != nil {
+			println("Error:", err.Error())
+		} else {
+			newChannel = model.Channel{ID: int(id), Name: name}
+		}
+	}
+	defer db.Close()
+	//add new chanel in observer
 	for _, observer := range addChannelObserver {
 		observer <- newChannel
 	}
 	return newChannel, nil
 }
-func remove(s []model.Channel, i int) []model.Channel {
-	s[i] = s[len(s)-1]
-	return s[:len(s)-1]
-}
 func (r *mutationResolver) DeleteChannel(ctx context.Context, ID int) (model.Channel, error) {
+	db := connection.DbConn()
 
-	fmt.Println("---------DeleteChannel-----------")
-	var newChannel model.Channel
-	for i, v := range channelList {
-		if v.ID == ID {
-			channelList = remove(channelList, i)
-			newChannel = model.Channel{ID: v.ID, Name: ""}
-		}
+	delForm, err := db.Prepare("DELETE FROM channel WHERE id=?")
+	if err != nil {
+		panic(err.Error())
 	}
+	delForm.Exec(ID)
+	var newChannel model.Channel
+	defer db.Close()
+	newChannel = model.Channel{ID: ID, Name: ""}
 	for _, observer := range deleteChannelObserver {
 		observer <- newChannel
 	}
 	return newChannel, nil
 }
 func (r *mutationResolver) UpdateChannel(ctx context.Context, id int, name string) (model.Channel, error) {
+	db := connection.DbConn()
 
-	fmt.Println("---------UpdateChannel-----------")
-	var newChannel model.Channel
-	for i, v := range channelList {
-		if v.ID == id {
-			channelList[i].Name = name
-			newChannel = model.Channel{ID: v.ID, Name: name}
-		}
+	insForm, err := db.Prepare("UPDATE channel SET name=? WHERE id=?")
+	if err != nil {
+		panic(err.Error())
 	}
 
+	var newChannel model.Channel
+	insForm.Exec(name, id)
+	newChannel = model.Channel{ID: id, Name: name}
+
+	defer db.Close()
+	//add new chanel in observer
 	for _, observer := range updateChannelObserver {
 		observer <- newChannel
 	}
@@ -92,6 +105,11 @@ func (r *subscriptionResolver) SubscriptionChannelAdded(ctx context.Context) (<-
 	id := randString(8)
 	events := make(chan model.Channel, 1)
 
+	go func() {
+		<-ctx.Done()
+		delete(addChannelObserver, id)
+	}()
+
 	addChannelObserver[id] = events
 
 	return events, nil
@@ -101,7 +119,13 @@ func (r *subscriptionResolver) SubscriptionChannelDeleted(ctx context.Context) (
 	id := randString(8)
 	events := make(chan model.Channel, 1)
 
+	go func() {
+		<-ctx.Done()
+		delete(deleteChannelObserver, id)
+	}()
+
 	deleteChannelObserver[id] = events
+
 	return events, nil
 }
 
@@ -109,6 +133,12 @@ func (r *subscriptionResolver) SubscriptionChannelUpdated(ctx context.Context) (
 	id := randString(8)
 	events := make(chan model.Channel, 1)
 
+	go func() {
+		<-ctx.Done()
+		delete(updateChannelObserver, id)
+	}()
+
 	updateChannelObserver[id] = events
+
 	return events, nil
 }
