@@ -1,0 +1,109 @@
+For this demo demo we have used golang gqlgen package and reactjs apollo-client.
+Purpose of this demo is to show case graphql query, mutation and subscription.
+Although gqlgen original documantation is good but I thought its best to do CRUD saperatly for learning purpose.
+I hope this will great help to someone starting golang graphql.
+I am considering reader has little knowledge of golang and database connection in golang
+
+This is part1 of two searies tutorial one for
+1. golang gqlgen backend
+2. will be reactjs apollo-client front end which using this golang backend.
+
+what is gqlgen?
+Its golang package cum utility which allows us to auto generate golang code stub from graphql schema automatically.
+Their original getting started is good to read but I will mention steps here also.
+
+Step 1 :
+    > Install gqlgen
+         $ go get -u github.com/99designs/gqlgen github.com/vektah/gorunpkg
+
+    > All the code we will be doing should reside in go/src folder.
+      So purpose of this demo
+      ~/go/src/golang-gqlgen-reactjs-subscription-demo/golang
+      this is preferred path.
+
+
+Step 2:
+    so first we need to create our required graphql schema.
+
+    Create schema.graphql file with below:
+       type Channel {
+            id: Int!                # "!" denotes a required field
+            name: String!
+        }
+
+        type Query {
+            channels: [Channel!]!
+        }
+
+        type Mutation {
+            addChannel(name: String!): Channel!
+            updateChannel(id:Int!,name: String!): Channel!
+            deleteChannel(ID: Int!): Channel!
+        }
+
+        type Subscription {
+            subscriptionChannelAdded: Channel!
+            subscriptionChannelDeleted: Channel!
+            subscriptionChannelUpdated: Channel!
+        }
+
+    then next file we need is gqlgen.yml
+    this file is responsible to direct gqlgen where to autogenerate files.
+
+    for our demo purpose content will be as below
+        schema: schema.graphql
+        exec:
+            filename: app/graph/generated.go
+
+        model:
+            filename: app/model/models_gen.go
+
+        resolver:
+            filename: app/resolver/resolver.go
+            type: Resolver
+
+Step 3:
+    inside our mentioned folder fire command
+    $ gqlgen
+
+    this will generate below files if you are first time running it.
+
+    app/graph/generated.go
+    app/model/models_gen.go
+    app/resolver/resolver.go (if this file exists it will not be regenrated)
+
+Step 4:
+    So first thing will require for us is graphql query to get all channels.
+
+    As we have followed little different structure for ease of understanding and maintanance.
+    Create file app/resolver/ChannelResolver.go
+
+        func (r *queryResolver) Channels(ctx context.Context) ([]model.Channel, error) {
+            db := connection.DbConn()
+            var query = "SELECT * FROM channel"
+            selDB, err := db.Query(query)
+            var arrChannel []model.Channel
+            for selDB.Next() {
+                var name string
+                var id int64
+                err = selDB.Scan(&id, &name)
+                if err != nil {
+                    panic(err.Error())
+                }
+                todo1 := model.Channel{ID: int(id), Name: name}
+                arrChannel = append(arrChannel, todo1)
+            }
+
+            defer db.Close()
+            return arrChannel, nil
+        }
+
+    dont forget to remove below funciton from resolver.go file
+        Channels(ctx context.Context) ([]model.Channel, error)
+
+    For now we will consontrate only on Add Channel Mutation and Subscription
+
+
+
+
+
