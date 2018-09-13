@@ -1,4 +1,4 @@
-For this demo demo we have used golang gqlgen package and reactjs apollo-client.
+For this demo we have used golang gqlgen package and reactjs apollo-client.
 Purpose of this demo is to show case graphql query, mutation and subscription.
 Although gqlgen original documantation is good but I thought its best to do CRUD saperatly for learning purpose.
 I hope this will great help to someone starting golang graphql.

@@ -1,0 +1,152 @@
+This is a second part of reactjs apollo-client front end which use golang backend
+
+For this demo preferred path is
+    ~/go/src/golang-gqlgen-reactjs-subscription-demo/reactjs
+
+Step 1 :
+    First of all we need to connect our front-end with back end
+    So we use ApolloClient for connect to golang backend
+
+        const wsLink = new WebSocketLink({
+            uri: environment.WSHost,
+            options: {
+                reconnect: true
+            }
+        });
+        const apolloClient = new ApolloClient({
+            link: wsLink,
+            cache: new InMemoryCache(),
+        });
+
+        function render(component) {
+            ReactDOM.render(<ApolloProvider client={apolloClient}>
+                {component}
+            </ApolloProvider>, document.getElementById('root'));
+        }
+
+        render(<App />);
+
+    Don't forgot to add  
+        <div id="root"></div> In 
+    -reactjs/public/index.html Body
+
+Step 2:
+    Create component for CURD operation of channel
+    So purpose of this demo i have created reactjs/src/components/ChannelList.jsx
+
+    Okay so we devide this file in few section for easily understand
+    1) Import section we need to insert react-apollo and graphql-tag for call graphql Query and Mutation
+        import React, { Component } from 'react';
+        import { graphql, Mutation, compose } from 'react-apollo';
+        import gql from 'graphql-tag';
+
+    2) Render of react component
+        class ChannelsList extends Component {
+            componentWillMount() {
+                // Add subscribeToMore method for watch subscription of add channel
+                this.props.data.subscribeToMore({
+                    document: addChannelSubscription,  // Use the subscription
+                    updateQuery: (prev, { subscriptionData }) => {
+                        if (!subscriptionData.data) {
+                            return prev;
+                        }
+                        const newChannel = subscriptionData.data.subscriptionChannelAdded;
+                        // Add check to prevent double adding of channels.
+                        if (!prev.channels.find((channel) => channel.id === newChannel.id)) {
+                            let updatedChannels = Object.assign({}, prev, { channels: [...prev.channels, newChannel] });
+                            return updatedChannels;
+                        } else {
+                            return prev;
+                        }
+                    }
+                });
+            }
+
+            render() {
+                // we get data of channels on page render from props
+                const { data: { loading, error, channels } } = this.props;
+                if (loading) {
+                    return <p>Loading ...</p>;
+                }
+                if (error) {
+                    return <p>{error.message}</p>;
+                }
+
+                return (
+                    <div className="container">
+                        <div className="row justify-content-md-center">
+                            <div className="col-md-8">
+                                <center><h3 className="main-title">Channel List</h3></center>
+                                <hr />
+                                <div className="input-group mb-3">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Enter Channel"
+                                        onKeyUp={this.handleKeyUp}
+                                        value={this.state.nameValue}
+                                        onChange={this.onChangeFunc} />
+                                </div>
+                                <ul className="list-group">
+                                    {channels.map(ch =>
+                                        <li key={"div_" + ch.id} className="list-group-item">
+                                            <label htmlFor="checkbox5">
+                                                {ch.id} : {ch.name}
+                                            </label>
+                                            <div className="pull-right action-buttons">
+                                                <a onClick={() => this.onEditClick(ch)} href="javascript:void(0)"><span className="fa fa-pencil"></span></a>
+                                                <!-- Use Mutation for direct run deleteChannel mutation-->
+                                                <Mutation mutation={deleteChannel} >
+                                                    {(deleteChannelMutation, { data }) => (
+                                                        <a className="trash" href="javascript:void(0)" onClick={() => { deleteChannelMutation({ variables: { id: ch.id } }); }}><span className="fa fa-trash"></span></a>
+                                                    )}
+                                                </Mutation>
+                                            </div>
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        }
+
+    3) Now Write Query ,Mutation and Subscription for CRUD channel
+        // query for get all channel list
+        export const channelsListQuery = gql`
+            query ChannelsListQuery {
+                channels {
+                    id
+                    name
+                }
+            }
+        `;
+
+        //Mutation for add channel
+        const CreateChannelMutation = gql`
+            mutation addChannel($name: String!) {
+                addChannel(name: $name) {
+                    id
+                    name
+                }
+            }
+        `;
+
+        //Subscription for newly added channel
+
+        const addChannelSubscription = gql`
+            subscription Channels {
+                subscriptionChannelAdded {
+                    id
+                    name
+                }
+            }
+        `
+
+        //export class with graphql query and mutation is very import for get data on component load
+
+        const multipleMutation = compose(
+            graphql(CreateChannelMutation, { name: 'createChannelMutation' })
+        )
+        export default compose(multipleMutation, graphql(channelsListQuery))(ChannelsList);
