@@ -1,11 +1,14 @@
-This is a second part of reactjs apollo-client front end which use golang backend
+This is a second part of reactjs apollo-client front end in which as backend we have used golang gqlgen graphql server
+Here also I am assuming readers know reactjs little bit.
 
-For this demo preferred path is
+For this demo again preferred path is
     ~/go/src/golang-gqlgen-reactjs-subscription-demo/reactjs
 
 Step 1 :
+    you can start react project with default create-react-app
+
     First of all we need to connect our front-end with back end
-    So we use ApolloClient for connect to golang backend
+    So we have used ApolloClient for connection to golang backend
 
         const wsLink = new WebSocketLink({
             uri: environment.WSHost,
@@ -26,15 +29,11 @@ Step 1 :
 
         render(<App />);
 
-    Don't forgot to add  
-        <div id="root"></div> In 
-    -reactjs/public/index.html Body
-
 Step 2:
     Create component for CURD operation of channel
-    So purpose of this demo i have created reactjs/src/components/ChannelList.jsx
+    for that we will create file reactjs/src/components/ChannelList.jsx
 
-    Okay so we devide this file in few section for easily understand
+    Okay so we will try to understand devide this file in few section to understand easily
     1) Import section we need to insert react-apollo and graphql-tag for call graphql Query and Mutation
         import React, { Component } from 'react';
         import { graphql, Mutation, compose } from 'react-apollo';

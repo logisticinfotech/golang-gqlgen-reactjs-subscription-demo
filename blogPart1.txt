@@ -1,12 +1,13 @@
-For this demo we have used golang gqlgen package and reactjs apollo-client.
-Purpose of this demo is to show case graphql query, mutation and subscription.
+For this demo we have used golang gqlgen package, mysql and reactjs apollo-client.
+For better understanding we have used mysql for database.
+Purpose of this demo is to showcase graphql query, mutation and subscription in golang.
 Although gqlgen original documantation is good but I thought its best to do CRUD saperatly for learning purpose.
 I hope this will great help to someone starting golang graphql.
 I am considering reader has little knowledge of golang and database connection in golang
 
-This is part1 of two searies tutorial one for
+This is part1 of two searies tutorial
 1. golang gqlgen backend
-2. will be reactjs apollo-client front end which using this golang backend.
+2. reactjs apollo-client front end which using this golang backend.
 
 what is gqlgen?
 Its golang package cum utility which allows us to auto generate golang code stub from graphql schema automatically.
@@ -26,7 +27,7 @@ Step 2:
     so first we need to create our required graphql schema.
 
     Create schema.graphql file with below:
-       type Channel {
+        type Channel {
             id: Int!                # "!" denotes a required field
             name: String!
         }
@@ -102,16 +103,17 @@ Step 4:
         Channels(ctx context.Context) ([]model.Channel, error)
 
     For now we will consontrate only on Add Channel Mutation and Subscription
+    (although we have included Edit/Delete Channels mutation and subscription)
 
     For subscription we need to create one observer for our channel list
         var addChannelObserver map[string]chan model.Channel
 
-    Now on file init we set blank model.Channel Object in addChannelObserver
+    Now in ChannelResolver.go init we set blank model.Channel Object in addChannelObserver
         func init() {
             addChannelObserver = map[string]chan model.Channel{}
         }
-       
-    When any new channel added we need to add newly added channel into our addChannelObserver 
+
+    When any new channel added we need to add newly added channel into our addChannelObserver
 
     func (r *mutationResolver) AddChannel(ctx context.Context, name string) (model.Channel, error) {
         db := connection.DbConn()
@@ -142,7 +144,7 @@ Step 4:
         return newChannel, nil
     }
 
-    Now we create function for fire subscription of add channel
+    Now we will create function to fire subscription for channelAdded
 
     func (r *subscriptionResolver) SubscriptionChannelAdded(ctx context.Context) (<-chan model.Channel, error) {
         id := randString(8)
@@ -157,3 +159,10 @@ Step 4:
 
         return events, nil
     }
+
+    We can run this code with
+    $ go run main.go
+
+    and url will be http://localhost:8888
+
+That is all for golang code
