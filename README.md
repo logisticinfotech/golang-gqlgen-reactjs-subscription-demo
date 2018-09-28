@@ -1,4 +1,4 @@
-# golang-gqlgen-reactjs-subscription-demo
+# Golang-gqlgen-Reactjs-subscription-demo
 
 You can find step by step guide for Golang Part 1 [here](https://www.logisticinfotech.com/blog/graphql-subscription-golang-reactjs/) And React Part 2 [here](https://www.logisticinfotech.com/blog/react-apollo-client-subscription/) to understand this demo properly.
 
